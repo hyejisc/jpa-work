@@ -2,17 +2,19 @@ package com.example.sample.member.service;
 
 import com.example.sample.member.dto.MemberDto;
 import com.example.sample.member.entity.Member;
-import com.example.sample.member.entity.QMember;
 import com.example.sample.member.repository.MemberRepository;
+import com.example.sample.member.vo.MemberVO;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import io.micrometer.core.instrument.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import java.awt.print.Pageable;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 
 import static com.example.sample.member.entity.QMember.member;
@@ -24,6 +26,12 @@ public class MemberService {
     @Autowired
     private MemberRepository memberRepository;
 
+    private final JPAQueryFactory jpaQueryFactory;
+
+    public MemberService(JPAQueryFactory jpaQueryFactory) {
+        this.jpaQueryFactory = jpaQueryFactory;
+    }
+
 
     public Member createMember(Member member) {
         Member savedMember = memberRepository.save(member);
@@ -31,14 +39,63 @@ public class MemberService {
     }
 
 
-    public List<Member> getMemberList(MemberDto dto) {
+    public List<MemberVO> getMemberList(MemberDto dto, Pageable pageable) {
 
-       return memberRepository.findAll(); //전부 다 가져옴
+        // return memberRepository.findAll(); //전부 다 가져옴
+       // return  memberRepository.findAll(pageable).toList();
 
+        BooleanBuilder builder = new BooleanBuilder();
+        String keyword = dto.getKeyword();
+
+        if(keyword!= null) {
+
+            switch (dto.getSearchOption()){
+                case "name" :
+                    builder.and(member.name.contains(dto.getKeyword()));
+                    break;
+                case "address" :
+                    builder.and(member.address.contains(dto.getKeyword()));
+                    break;
+                }
+        }
+
+        return  jpaQueryFactory.select(Projections.constructor(MemberVO.class,
+                member.id, member.address, member.name, member.createDate))
+                .from(member)
+                .where(builder)
+                .orderBy(member.createDate.desc())
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
     }
 
-    public Long getMemberListCnt() {
-        return memberRepository.count();
+    public Integer getMemberListCnt(MemberDto dto, Pageable pageable) {
+
+        BooleanBuilder builder = new BooleanBuilder();
+        String keyword = dto.getKeyword();
+
+        if(keyword!= null) {
+
+            switch (dto.getSearchOption()){
+                case "name" :
+                    builder.and(member.name.contains(dto.getKeyword()));
+                    break;
+                case "address" :
+                    builder.and(member.address.contains(dto.getKeyword()));
+                    break;
+            }
+        }
+
+        return Math.toIntExact(jpaQueryFactory.select(Projections.constructor(MemberVO.class,
+                        member.id, member.address, member.name, member.createDate))
+                .from(member)
+                .where(builder)
+                .orderBy(member.createDate.desc())
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch().size());
+
+       // return memberRepository.count();
     }
 
     public Member getMember(Long id) {

@@ -3,14 +3,18 @@ package com.example.sample.member;
 import com.example.sample.member.dto.MemberDto;
 import com.example.sample.member.entity.Member;
 import com.example.sample.member.service.MemberService;
+import com.example.sample.member.vo.MemberVO;
+import com.querydsl.core.QueryResults;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.awt.print.Pageable;
+import org.springframework.data.domain.Pageable;
+
 import java.text.ParseException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -47,16 +51,17 @@ public class MemberController {
 
     // 멤버 전체 리스트 조회
     @GetMapping("/list")
-    public Map<String, Object> getMemberList(MemberDto dto) {
+    public Map<String, Object> getMemberList(MemberDto dto, Pageable pageable) throws Exception{
 
         Map<String, Object> res = new HashMap<>();
 
-        List<Member> members = memberService.getMemberList(dto);
-        Long membersCnt = memberService.getMemberListCnt();
+        List<MemberVO> members = memberService.getMemberList(dto, pageable);
+        Integer membersCnt = memberService.getMemberListCnt(dto, pageable);
 
         res.put("data", members);
         res.put("dataCnt", membersCnt);
         return res;
+
     }
 
     // 멤버 한명 조회
